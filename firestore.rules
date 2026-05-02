@@ -1,0 +1,215 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn(); }
+    function isBootstrappedAdmin() { return isVerified() && request.auth.token.email == 'talhasafi04@gmail.com'; }
+
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function getUserRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role 
+        : null;
+    }
+    
+    function isAdmin() {
+       return isVerified() && (getUserRole() == 'admin' || isBootstrappedAdmin());
+    }
+
+    function isStaff() {
+       return isVerified() && (getUserRole() == 'staff' || getUserRole() == 'admin' || isBootstrappedAdmin());
+    }
+
+    // --- Users Collection ---
+    function isValidUserAuth() {
+      return incoming().role in ['admin', 'staff'] &&
+             incoming().email is string && incoming().email.size() <= 200;
+    }
+
+    match /users/{userId} {
+      // Allow user to read their own record, or admins can read any
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      
+      // Only admins can create/update roles
+      allow create: if isAdmin() && isValidUserAuth();
+      allow update: if isAdmin() && isValidUserAuth();
+      allow delete: if isAdmin();
+    }
+
+    // --- System Collection ---
+    match /system/{docId} {
+      // Anyone signed in or trying to sign in can read connection
+      allow get: if true;
+    }
+    
+    // --- Categories Collection ---
+    function isValidCategory() {
+      return incoming().keys().hasAll(['name', 'createdAt']) &&
+             incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+             (incoming().get('description', '') is string);
+    }
+
+    match /categories/{categoryId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidCategory() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidCategory() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // --- Products Collection ---
+    function isValidProduct() {
+      return incoming().keys().hasAll(['title', 'category', 'price', 'stock', 'sku', 'status', 'images', 'createdAt']) &&
+             incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+             incoming().category is string && incoming().category.size() <= 100 &&
+             incoming().price is number && incoming().price >= 0 &&
+             incoming().stock is number && incoming().stock >= 0 &&
+             incoming().sku is string && incoming().sku.size() <= 100 &&
+             incoming().status in ['active', 'out_of_stock', 'draft'] &&
+             incoming().images is list && incoming().images.size() <= 10 &&
+             (incoming().get('discount', 0) is number) &&
+             (incoming().get('description', '') is string);
+    }
+
+    match /products/{productId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidProduct() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidProduct() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+    
+    // --- Orders Collection ---
+    function isValidOrder() {
+      return incoming().keys().hasAll(['orderNumber', 'customer', 'shippingAddress', 'items', 'subtotal', 'shipping', 'tax', 'totalAmount', 'status', 'paymentMethod', 'paymentStatus', 'createdAt']) &&
+             incoming().orderNumber is string && incoming().orderNumber.size() > 0 && incoming().orderNumber.size() <= 50 &&
+             incoming().customer is map && incoming().customer.keys().hasAll(['name', 'email', 'phone']) &&
+             incoming().shippingAddress is map && incoming().shippingAddress.keys().hasAll(['street', 'city', 'state', 'zip', 'country']) &&
+             incoming().items is list && incoming().items.size() > 0 && incoming().items.size() <= 100 &&
+             incoming().totalAmount is number && incoming().totalAmount >= 0 &&
+             incoming().status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] &&
+             incoming().paymentMethod is string && incoming().paymentMethod.size() <= 50 &&
+             incoming().paymentStatus in ['unpaid', 'paid', 'refunded'] &&
+             (incoming().get('transactionId', '') is string) &&
+             (incoming().get('trackingNumber', '') is string) &&
+             (incoming().get('courier', '') is string);
+    }
+
+    match /orders/{orderId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidOrder() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidOrder() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+    
+    // --- Customers Collection ---
+    function isValidCustomer() {
+      return incoming().keys().hasAll(['name', 'email', 'status', 'createdAt']) &&
+             incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+             incoming().email is string && incoming().email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+             (incoming().get('phone', '') is string) &&
+             incoming().status in ['active', 'blocked'] &&
+             (incoming().get('totalOrders', 0) is number) &&
+             (incoming().get('totalSpent', 0) is number);
+    }
+    
+    match /customers/{customerId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidCustomer() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidCustomer() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // --- Settings Collection ---
+    function isValidShippingSetting() {
+      return incoming().keys().hasAll(['baseCharge']) &&
+             incoming().baseCharge is number && incoming().baseCharge >= 0 &&
+             (incoming().get('freeShippingThreshold', 0) is number);
+    }
+    
+    function isValidGeneralSetting() {
+      return (incoming().get('websiteName', '') is string) &&
+             (incoming().get('logoUrl', '') is string) &&
+             (incoming().get('contactEmail', '') is string) &&
+             (incoming().get('contactPhone', '') is string) &&
+             (incoming().get('contactAddress', '') is string) &&
+             (incoming().get('heroTitle', '') is string) &&
+             (incoming().get('heroSubtitle', '') is string) &&
+             (incoming().get('heroImage', '') is string) &&
+             (incoming().get('facebookUrl', '') is string) &&
+             (incoming().get('twitterUrl', '') is string) &&
+             (incoming().get('instagramUrl', '') is string);
+    }
+    
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && (
+        (settingId == 'shipping' && isValidShippingSetting()) ||
+        (settingId == 'general' && isValidGeneralSetting())
+      ) && incoming().updatedAt == request.time;
+    }
+
+    // --- Coupons Collection ---
+    function isValidCoupon() {
+      return incoming().keys().hasAll(['code', 'type', 'value', 'status', 'createdAt']) &&
+             incoming().code is string && incoming().code.size() > 0 && incoming().code.size() <= 50 &&
+             incoming().type in ['percentage', 'fixed'] &&
+             incoming().value is number && incoming().value > 0 &&
+             incoming().status in ['active', 'inactive'] &&
+             (incoming().get('usageLimit', 0) is number) &&
+             (incoming().get('usageCount', 0) is number) &&
+             (incoming().get('expiryDate', 0) is number);
+    }
+
+    match /coupons/{couponId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidCoupon() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidCoupon() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // --- Notifications Collection ---
+    function isValidNotification() {
+      return incoming().keys().hasAll(['type', 'title', 'message', 'read', 'createdAt']) &&
+             incoming().type in ['order', 'stock', 'system'] &&
+             incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 100 &&
+             incoming().message is string && incoming().message.size() > 0 && incoming().message.size() <= 500 &&
+             incoming().read is bool &&
+             (incoming().get('referenceId', '') is string);
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isStaff();
+      allow create: if isStaff() && isValidNotification() && incoming().createdAt == request.time;
+      allow update: if isStaff() && isValidNotification() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+    // --- Messages Collection ---
+    function isValidMessage() {
+      return incoming().keys().hasAll(['name', 'email', 'message', 'status']) &&
+             incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100 &&
+             incoming().email is string && incoming().email.matches('^[^@]+@[^@]+\\.[a-zA-Z]{2,}$') &&
+             (incoming().get('subject', '') is string) &&
+             incoming().message is string && incoming().message.size() > 0 && incoming().message.size() <= 2000 &&
+             incoming().status in ['new', 'read', 'replied'] &&
+             (incoming().get('replies', []) is list) &&
+             (incoming().get('createdAt', 0) is number) &&
+             (incoming().get('updatedAt', 0) is number);
+    }
+    
+    match /messages/{messageId} {
+      allow create: if isValidMessage() && incoming().createdAt == request.time;
+      allow get, list: if isStaff();
+      allow update: if isStaff() && isValidMessage() && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+  }
+}

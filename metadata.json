@@ -1,0 +1,6 @@
+{
+  "name": "E-Commerce Admin Dashboard",
+  "description": "Main control panel featuring sales graphs, recent orders, metrics, and stock alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

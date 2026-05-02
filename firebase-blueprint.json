@@ -1,0 +1,240 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user (admin or staff)",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "email": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["role", "email"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Store product category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Store customer",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "blocked"] },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name", "email", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Store order",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string" },
+        "customer": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        },
+        "shippingAddress": {
+          "type": "object",
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "zip": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productTitle": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" },
+              "image": { "type": "string" }
+            }
+          }
+        },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "shipping": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "shipped", "delivered", "cancelled"] },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "paid", "refunded"] },
+        "transactionId": { "type": "string" },
+        "trackingNumber": { "type": "string" },
+        "courier": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["orderNumber", "customer", "shippingAddress", "items", "totalAmount", "status", "paymentMethod", "paymentStatus"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Store product",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "discount": { "type": "number" },
+        "stock": { "type": "number" },
+        "sku": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "out_of_stock", "draft"] },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["title", "category", "price", "stock", "sku", "status"]
+    },
+    "System": {
+      "title": "System",
+      "description": "System config details",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" }
+      }
+    },
+    "StoreSetting": {
+      "title": "StoreSetting",
+      "description": "General store settings",
+      "type": "object",
+      "properties": {
+        "websiteName": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactAddress": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "facebookUrl": { "type": "string" },
+        "twitterUrl": { "type": "string" },
+        "instagramUrl": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "ShippingSetting": {
+      "title": "ShippingSetting",
+      "description": "Store shipping settings",
+      "type": "object",
+      "properties": {
+        "baseCharge": { "type": "number" },
+        "freeShippingThreshold": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["baseCharge"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Store coupon codes",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["percentage", "fixed"] },
+        "value": { "type": "number" },
+        "expiryDate": { "type": "number" },
+        "usageLimit": { "type": "number" },
+        "usageCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["code", "type", "value", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System or alert notifications",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["order", "stock", "system"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "referenceId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["type", "title", "message", "read"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Store customer contact messages",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "read", "replied"] },
+        "replies": {
+           "type": "array",
+           "items": { "type": "object" }
+        },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name", "email", "message", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user roles and information."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Product categories."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Store products catalogue."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Store orders."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/ShippingSetting" },
+      "description": "Store settings."
+    },
+    "/coupons/{couponId}": {
+      "schema": { "$ref": "#/entities/Coupon" },
+      "description": "Store coupons."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Store user or system notifications."
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Store contact messages."
+    },
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/System" },
+      "description": "Stores system configs."
+    }
+  }
+}
